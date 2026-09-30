@@ -391,6 +391,7 @@ section{padding:56px 0}
       </div>
 
       <form class="form" id="orderForm" novalidate>
+        <input type="checkbox" name="botcheck" tabindex="-1" autocomplete="off" style="display:none">
         <div class="fields">
           <label for="phone">Телефон за връзка</label>
           <input type="tel" id="phone" name="phone" inputmode="tel" autocomplete="tel" placeholder="08X XXX XXXX" required>
@@ -451,7 +452,7 @@ section{padding:56px 0}
   /* ===== НАСТРОЙКИ ===== */
   var PRICE = 112, OLD = 265;
   var PRODUCT = 'Чугунена електрическа месомелачка №32 с електромотор';
-  var ORDER_ENDPOINT = ''; // <- постави URL на endpoint-а за поръчки (POST JSON: product, phone, quantity, total)
+  var WEB3FORMS_KEY = 'fb69d17e-9aee-47cb-9d48-a870aa6d073b';
 
   /* countdown to midnight */
   var timers = document.querySelectorAll('[data-timer]');
@@ -504,11 +505,21 @@ section{padding:56px 0}
     if(!valid){ err.textContent='Въведи валиден телефонен номер, например 0888 123 456.'; phone.setAttribute('aria-invalid','true'); phone.focus(); return; }
     err.textContent=''; phone.removeAttribute('aria-invalid');
     btn.disabled = true; btn.style.opacity = '.7';
-    var data = {product:PRODUCT, phone:digits, quantity:q, total:PRICE*q, page:location.href};
+    if(form.botcheck && form.botcheck.checked){ return; }
+    var data = {
+      access_key: WEB3FORMS_KEY,
+      subject: 'Нова поръчка: ' + PRODUCT + ' (' + q + ' бр.)',
+      from_name: 'PromoMaistor лендинг',
+      'Продукт': PRODUCT,
+      'Телефон': digits,
+      'Количество': q,
+      'Сума': (PRICE*q) + ' €',
+      'Страница': location.href
+    };
     var done = function(){ form.classList.add('done'); try{ if(window.fbq) fbq('track','Purchase',{value:PRICE*q,currency:'EUR'}); if(window.dataLayer) dataLayer.push({event:'order_submit',value:PRICE*q,currency:'EUR'}); }catch(x){} };
-    if(!ORDER_ENDPOINT){ done(); return; }
-    fetch(ORDER_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})
-      .then(function(r){ if(!r.ok) throw 0; done(); })
+    fetch('https://api.web3forms.com/submit',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(data)})
+      .then(function(r){ return r.json(); })
+      .then(function(res){ if(!res || !res.success) throw 0; done(); })
       .catch(function(){ btn.disabled=false; btn.style.opacity=''; err.textContent='Поръчката не беше изпратена. Опитай отново или се обади на 0886 966 466.'; });
   });
 })();
